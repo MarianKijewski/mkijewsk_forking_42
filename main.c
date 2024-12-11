@@ -120,27 +120,23 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	struct bmp_header* header = (struct bmp_header*) file_content.data;
-	// printf("signature: %.2s\nfile_size: %u\ndata_offset: %u\ninfo_header_size: %u\nwidth: %u\nheight: %u\nplanes: %i\nbit_per_px: %i\ncompression_type: %u\ncompression_size: %u\n", header->signature, header->file_size, header->data_offset, header->info_header_size, header->width, header->height, header->number_of_planes, header->bit_per_pixel, header->compression_type, header->compressed_image_size);
-	
-	int header_count = 0;
+
 	int	message_length = -1;
 	u32 i;
 	for (i = header->data_offset; i + 3 < file_content.size; i+= 4)
 	{
 		__m128i data = _mm_loadu_si128((__m128i*)&file_content.data[i]);
 		u32 pixel = _mm_extract_epi32(data, 0);
-		if (message_length == 0)
-		{
-			message_length = get_length(pixel);
-			break;
-		}
 		if (is_header(pixel))
 		{
-			header_count++;
-			if (header_count == 14)
-				message_length = 0;
+			i += (header->width * 4) * 7;
+			i += 4 * 7;
+			break;
 		}
 	}
+	__m128i data = _mm_loadu_si128((__m128i*)&file_content.data[i]);
+	u32 pixel = _mm_extract_epi32(data, 0);
+	message_length = get_length(pixel);
 	i -= 4 * 5;
 	i -= (header->width * 4) * 2;
 	int	pixels_to_read = message_length / 3;
@@ -160,6 +156,5 @@ int main(int argc, char** argv)
 		i += 4;
 	}
 	write(1, "\n", 1);
-	// printf("len:%d\n", message_length);
 	return 0;
 }
