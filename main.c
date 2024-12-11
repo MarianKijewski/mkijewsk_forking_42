@@ -90,11 +90,20 @@ void	translate(u32 value, int length)
 	char red = (value >> 16) & 0xFF;
 
 	if (length >= 3)
-		printf("%c%c%c", blue, green, red);
+	{
+		write(1, &blue, 1);
+		write(1, &green, 1);
+		write(1, &red, 1);
+	}
 	else if (length == 2)
-		printf("%c%c", blue, green);
+	{
+		write(1, &blue, 1);
+		write(1, &green, 1);
+	}
 	else if (length == 1)
-		printf("%c", blue);
+	{
+		write(1, &blue, 1);
+	}
 }
 
 int main(int argc, char** argv)
