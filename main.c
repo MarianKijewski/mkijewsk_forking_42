@@ -162,7 +162,7 @@ int main(int argc, char** argv)
 		}
 		i += 4;
 	}
-	printf("\n");
+	write(1, "\n", 1);
 	// printf("len:%d\n", message_length);
 	return 0;
 }
