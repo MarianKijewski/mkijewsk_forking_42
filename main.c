@@ -137,18 +137,23 @@ int main(int argc, char** argv)
 	}
 	i -= 4 * 5;
 	i -= (header->width * 4) * 2;
-	for (int j = 0; j <= message_length / 3; j++)
+	int	pixels_to_read = message_length / 3;
+	int	column = 0;
+	for (int x = 0; x <= pixels_to_read; x++)
 	{
 		__m128i data = _mm_loadu_si128((__m128i*)&file_content.data[i]);
 		u32 pixel = _mm_extract_epi32(data, 0);
-		translate(pixel, message_length - (j * 3));
-		i += 4;
-		if (j % 5 == 0 && j != 0)
+		translate(pixel, message_length - (x * 3));
+		column++;
+		if (column == 6)
 		{
-			i -= 4 * 5;
-			i -= header->width * 4;
+			i -= 4 * 6;
+			i -= (header->width * 4);
+			column = 0;
 		}
+		i += 4;
 	}
 	printf("\n");
+	// printf("len:%d\n", message_length);
 	return 0;
 }
