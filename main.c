@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <immintrin.h>
 
 typedef char i8;
 typedef unsigned char u8;
@@ -55,6 +56,47 @@ struct file_content   read_entire_file(char* filename)
 	return (struct file_content){file_data, file_size};
 }
 
+void print_bgr(u32 value)
+{
+	int blue = value & 0xFF;
+	int green = (value >> 8) & 0xFF;
+	int red = (value >> 16) & 0xFF;
+
+	// printf("BGR=(%d, %d, %d)\n", blue, green, red);
+	printf("RGB=(%d, %d, %d)\n", red, green, blue);
+}
+
+int	is_header(u32 value)
+{
+	int blue = value & 0xFF;
+	int green = (value >> 8) & 0xFF;
+	int red = (value >> 16) & 0xFF;
+
+	return (blue == 127 && green == 188 && red == 217);
+}
+
+int	get_length(u32 value)
+{
+	int blue = value & 0xFF;
+	int red = (value >> 16) & 0xFF;
+
+	return (blue + red);
+}
+
+void	translate(u32 value, int length)
+{
+	char blue = value & 0xFF;
+	char green = (value >> 8) & 0xFF;
+	char red = (value >> 16) & 0xFF;
+
+	if (length >= 3)
+		printf("%c%c%c", blue, green, red);
+	else if (length == 2)
+		printf("%c%c", blue, green);
+	else if (length == 1)
+		printf("%c", blue);
+}
+
 int main(int argc, char** argv)
 {
 	if (argc != 2)
@@ -69,6 +111,44 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	struct bmp_header* header = (struct bmp_header*) file_content.data;
-	printf("signature: %.2s\nfile_size: %u\ndata_offset: %u\ninfo_header_size: %u\nwidth: %u\nheight: %u\nplanes: %i\nbit_per_px: %i\ncompression_type: %u\ncompression_size: %u\n", header->signature, header->file_size, header->data_offset, header->info_header_size, header->width, header->height, header->number_of_planes, header->bit_per_pixel, header->compression_type, header->compressed_image_size);
+	// printf("signature: %.2s\nfile_size: %u\ndata_offset: %u\ninfo_header_size: %u\nwidth: %u\nheight: %u\nplanes: %i\nbit_per_px: %i\ncompression_type: %u\ncompression_size: %u\n", header->signature, header->file_size, header->data_offset, header->info_header_size, header->width, header->height, header->number_of_planes, header->bit_per_pixel, header->compression_type, header->compressed_image_size);
+	
+	u32 i;
+	i = header->data_offset;
+	int header_count = 0;
+	int	message_length = -1;
+
+	while (i + 3 < file_content.size)
+	{
+		__m128i data = _mm_loadu_si128((__m128i*)&file_content.data[i]);
+		u32 pixel = _mm_extract_epi32(data, 0);
+		if (message_length == 0)
+		{
+			message_length = get_length(pixel);
+			break;
+		}
+		if (is_header(pixel))
+		{
+			header_count++;
+			if (header_count == 14)
+				message_length = 0;
+		}
+		i += 4;
+	}
+	i -= 4 * 5;
+	i -= (header->width * 4) * 2;
+	for (int j = 0; j <= message_length / 3; j++)
+	{
+		__m128i data = _mm_loadu_si128((__m128i*)&file_content.data[i]);
+		u32 pixel = _mm_extract_epi32(data, 0);
+		translate(pixel, message_length - (j * 3));
+		i += 4;
+		if (j % 5 == 0 && j != 0)
+		{
+			i -= 4 * 5;
+			i -= header->width * 4;
+		}
+	}
+	printf("\n");
 	return 0;
 }
